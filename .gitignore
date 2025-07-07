@@ -1,0 +1,15 @@
+/tmp
+/out-tsc
+
+/node_modules
+npm-debug.log*
+.next
+.idea
+.vscode
+yarn-debug.log*
+yarn-error.log*
+/.pnp
+.pnp.js
+
+.vscode/*
+certificates
