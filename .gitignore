@@ -11,5 +11,7 @@ yarn-error.log*
 /.pnp
 .pnp.js
 
+.env
+
 .vscode/*
 certificates
