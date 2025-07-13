@@ -6,8 +6,15 @@ loadEnvConfig(projectDir)
 
 /** @type {import('next').NextConfig} */
 
+// Use basePath in production, not in development
+const isProduction = process.env.NODE_ENV === 'production';
+const basePath = isProduction ? '/cam-detection' : '';
+const assetPrefix = isProduction ? '/cam-detection' : '';
+
 const nextConfig = {
     output: 'standalone',
+    basePath: basePath,
+    assetPrefix: assetPrefix,
     trailingSlash: true,
     experimental: {
         webpackBuildWorker: true,
@@ -22,6 +29,7 @@ const nextConfig = {
     },
 
     images: {
+        path: basePath ? `${basePath}/_next/image` : '/_next/image',
         domains: ['demo.seedeep.ai', 'localhost', 'api.seedeep.ai'],
     },
 
@@ -34,6 +42,7 @@ const nextConfig = {
     env: {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
         NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
+        NEXT_PUBLIC_BASE_PATH: basePath,
     },
 
     async headers() {
@@ -57,5 +66,10 @@ const nextConfig = {
     },
 }
 
+console.log('🔧 Next.js Config:');
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  isProduction:', isProduction);
+console.log('  basePath:', basePath);
+console.log('  assetPrefix:', assetPrefix);
 
 module.exports = nextConfig

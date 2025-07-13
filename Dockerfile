@@ -1,11 +1,6 @@
 FROM node:18-alpine AS base
 
-# Build arguments
-ARG NODE_ENV=production
-ARG NEXT_PUBLIC_API_URL=""
-ARG NEXT_PUBLIC_WS_URL=""
-
-# Dependencies
+# Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
@@ -22,14 +17,25 @@ RUN \
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
-# Set build environment variables from args
+# Build arguments for environment variables
+ARG NODE_ENV=production
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+
+# Set environment variables for build
 ENV NODE_ENV=${NODE_ENV}
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+# Debug: Print build environment
+RUN echo "🔧 Build Environment:"
+RUN echo "  NODE_ENV: ${NODE_ENV}"
+RUN echo "  NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"
+RUN echo "  NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}"
 
 # Build will use environment variables from docker-compose
 RUN npm run build
@@ -59,5 +65,11 @@ ENV HOSTNAME "0.0.0.0"
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+
+# Debug: Print runtime environment
+RUN echo "🚀 Runtime Environment:"
+RUN echo "  NODE_ENV: ${NODE_ENV}"
+RUN echo "  PORT: ${PORT}"
+RUN echo "  HOSTNAME: ${HOSTNAME}"
 
 CMD ["node", "server.js"]
