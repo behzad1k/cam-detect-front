@@ -15,9 +15,13 @@ const nextConfig = {
     basePath: basePath,
     assetPrefix: assetPrefix,
     trailingSlash: true,
-
     experimental: {
-        outputFileTracingRoot: undefined,
+        // Remove outputFileTracingRoot if undefined
+        ...(process.env.OUTPUT_FILE_TRACING_ROOT && {
+            outputFileTracingRoot: process.env.OUTPUT_FILE_TRACING_ROOT
+        }),
+        // Enable webpack build worker to fix the warning
+        webpackBuildWorker: true,
     },
 
     typescript: {
