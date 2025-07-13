@@ -2,8 +2,7 @@ FROM node:18-alpine AS base
 
 # Build arguments
 ARG NODE_ENV=production
-ARG BASE_PATH=""
-ARG ASSET_PREFIX=""
+ARG ENABLE_BASE_PATH=true
 ARG NEXT_PUBLIC_API_URL=""
 ARG NEXT_PUBLIC_WS_URL=""
 
@@ -16,8 +15,8 @@ WORKDIR /app
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
 RUN \
   if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci --include=dev; \
-  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
   else echo "Lockfile not found." && exit 1; \
   fi
 
@@ -27,8 +26,7 @@ WORKDIR /app
 
 # Set build environment variables from args
 ENV NODE_ENV=${NODE_ENV}
-ENV BASE_PATH=${BASE_PATH}
-ENV ASSET_PREFIX=${ASSET_PREFIX}
+ENV ENABLE_BASE_PATH=${ENABLE_BASE_PATH}
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 
