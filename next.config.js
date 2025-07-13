@@ -6,22 +6,10 @@ loadEnvConfig(projectDir)
 
 /** @type {import('next').NextConfig} */
 
-// Only use basePath in production when ENABLE_BASE_PATH is true
-const useBasePath = process.env.ENABLE_BASE_PATH === 'true' && process.env.NODE_ENV === 'production';
-const basePath = useBasePath ? '/cam-detection' : '';
-const assetPrefix = useBasePath ? '/cam-detection' : '';
-
 const nextConfig = {
     output: 'standalone',
-    basePath: basePath,
-    assetPrefix: assetPrefix,
     trailingSlash: true,
     experimental: {
-        // Remove outputFileTracingRoot if undefined
-        ...(process.env.OUTPUT_FILE_TRACING_ROOT && {
-            outputFileTracingRoot: process.env.OUTPUT_FILE_TRACING_ROOT
-        }),
-        // Enable webpack build worker to fix the warning
         webpackBuildWorker: true,
     },
 
@@ -34,7 +22,6 @@ const nextConfig = {
     },
 
     images: {
-        path: basePath ? `${basePath}/_next/image` : '/_next/image',
         domains: ['demo.seedeep.ai', 'localhost', 'api.seedeep.ai'],
     },
 
@@ -47,7 +34,6 @@ const nextConfig = {
     env: {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
         NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
-        NEXT_PUBLIC_BASE_PATH: basePath,
     },
 
     async headers() {
@@ -69,22 +55,7 @@ const nextConfig = {
     webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
         return config;
     },
-
-    // Optional: Add some debugging info
-    ...(process.env.NODE_ENV === 'development' && {
-        onDemandEntries: {
-            maxInactiveAge: 25 * 1000,
-            pagesBufferLength: 2,
-        },
-    }),
 }
 
-// Debug logging
-console.log('🔧 Next.js Config:');
-console.log('  NODE_ENV:', process.env.NODE_ENV);
-console.log('  ENABLE_BASE_PATH:', process.env.ENABLE_BASE_PATH);
-console.log('  useBasePath:', useBasePath);
-console.log('  basePath:', basePath);
-console.log('  assetPrefix:', assetPrefix);
 
 module.exports = nextConfig

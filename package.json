@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "dev:prod": "ENABLE_BASE_PATH=true NODE_ENV=production npm run dev",
-    "build:prod": "ENABLE_BASE_PATH=true NODE_ENV=production npm run build"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@next/env": "^15.3.5",
