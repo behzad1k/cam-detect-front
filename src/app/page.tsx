@@ -54,7 +54,7 @@ export default function Home() {
     } catch (err) {
       console.error('Error capturing frame:', err);
     }
-  }, [isConnected, selectedModels, sendFrame]);
+  }, [isConnected, selectedModels, sendFrame, selectedCamera]);
 
   // Cleanup on unmount
   useEffect(() => {
