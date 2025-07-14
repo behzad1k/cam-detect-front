@@ -1,8 +1,9 @@
 'use client';
 
+import { Camera } from '@/types';
 import { useState, useCallback, useEffect } from 'react';
 
-export function useCamera() {
+export function useCamera(selectedCamera: Camera) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -10,7 +11,7 @@ export function useCamera() {
   const startCamera = useCallback(async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: selectedCamera.slug },
         audio: false
       });
 

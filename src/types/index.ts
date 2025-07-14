@@ -25,3 +25,9 @@ export interface Stats {
   fps: number;
   latency: number;
 }
+
+export interface Camera {
+  title: string;
+  slug: string;
+  icon: string;
+}

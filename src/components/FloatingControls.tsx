@@ -1,5 +1,6 @@
 'use client';
 
+import { Camera } from '@/types';
 import { useState } from 'react';
 import { Settings, X } from 'lucide-react';
 
@@ -13,13 +14,19 @@ interface FloatingControlsProps {
   selectedModels: string[];
   onModelToggle: (modelId: string) => void;
   availableModels: Model[];
+  availableCameras: Camera[];
+  selectedCamera: Camera;
+  setSelectedCamera: React.Dispatch<React.SetStateAction<Camera>>
 }
 
 export default function FloatingControls({
-                                           selectedModels,
-                                           onModelToggle,
-                                           availableModels
-                                         }: FloatingControlsProps) {
+   selectedModels,
+   onModelToggle,
+   availableModels,
+   availableCameras,
+   selectedCamera,
+   setSelectedCamera,
+ }: FloatingControlsProps) {
   const [showSettings, setShowSettings] = useState(false);
 
   return (
@@ -61,6 +68,28 @@ export default function FloatingControls({
               </label>
             ))}
           </div>
+          <h3 className="text-white font-semibold mb-3 text-sm border-t border-t-amber-700 mt-2 pt-1">Camera</h3>
+          <form className="space-y-3">
+
+            {availableCameras.map((model) => (
+              <label
+                key={model.slug}
+                className="flex items-center space-x-3 cursor-pointer hover:bg-white/10 p-2 rounded-lg transition-colors"
+              >
+                <input
+                  type="radio"
+                  checked={selectedCamera.slug === model.slug}
+                  onChange={() => setSelectedCamera(model)}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <span className="text-white text-sm flex-1">{model.title}</span>
+                <div
+                  className="w-3 h-3 rounded-full"
+                />
+              </label>
+            ))}
+
+          </form>
 
           {selectedModels.length === 0 && (
             <div className="mt-3 p-2 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
