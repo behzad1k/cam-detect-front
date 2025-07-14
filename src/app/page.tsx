@@ -24,7 +24,7 @@ const AVAILABLE_MODELS: Model[] = [
 
 export default function Home() {
   const [selectedModels, setSelectedModels] = useState<string[]>(['face_detection']);
-  const [selectedCamera, setSelectedCamera] = useState<Camera>(AVAILABLE_CAMERAS.user!);
+  const [selectedCamera, setSelectedCamera] = useState<Camera>(AVAILABLE_CAMERAS.environment!);
 
   const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
