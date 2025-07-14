@@ -24,7 +24,7 @@ export function useCamera(selectedCamera: Camera) {
       setIsStreaming(false);
       return null;
     }
-  }, []);
+  }, [selectedCamera]);
 
   const stopCamera = useCallback(() => {
     if (stream) {
