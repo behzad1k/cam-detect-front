@@ -14,7 +14,7 @@ interface UseWebSocketReturn {
   isConnected: boolean;
   detections: Record<string, DetectionResult>;
   error: string | null;
-  sendFrame: (imageData: string, models: string[]) => void;
+  sendFrame: (imageData: ArrayBuffer, models: string[]) => void;
   stats: { fps: number; latency: number };
 }
 
@@ -99,26 +99,55 @@ export function useWebSocket(): UseWebSocketReturn {
     }
   }, []);
 
-  const sendFrame = useCallback((imageData: string, models: string[]) => {
+  const sendFrame = useCallback((imageData: ArrayBuffer, models: string[]) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || models.length === 0) {
       return;
     }
 
-    const message = {
-      type: 'frame',
-      image: imageData,
-      models: models,
-      timestamp: Date.now()
-    };
-
+    const timestamp = Date.now();
     try {
-      wsRef.current.send(JSON.stringify(message));
+      // Convert models to bytes (UTF-8 encoded)
+      const modelNamesBytes = models.map(model => {
+        const encoder = new TextEncoder();
+        return encoder.encode(model);
+      });
+
+      // Calculate total buffer size
+      const totalLength =
+        4 + // timestamp (4 bytes)
+        1 + // model count (1 byte)
+        modelNamesBytes.reduce((sum, bytes) => sum + 1 + bytes.length, 0) + // models data
+        imageData.byteLength; // image data
+
+      // Create combined buffer
+      const buffer = new Uint8Array(totalLength);
+      const view = new DataView(buffer.buffer);
+
+      // Write timestamp (4 bytes, big-endian)
+      view.setUint32(0, Math.floor(timestamp / 1000));
+
+      // Write model count (1 byte)
+      buffer[4] = models.length;
+
+      // Write model names (each prefixed with 1 byte length)
+      let position = 5;
+      for (const modelBytes of modelNamesBytes) {
+        buffer[position] = modelBytes.length; // 1 byte length prefix
+        position += 1;
+        buffer.set(modelBytes, position); // model name bytes
+        position += modelBytes.length;
+      }
+
+      // Append image data
+      buffer.set(new Uint8Array(imageData), position);
+
+      // Send binary data
+      wsRef.current.send(buffer.buffer);
     } catch (err) {
       console.error('Error sending frame:', err);
       setError('Failed to send frame to server');
     }
   }, []);
-
   // Initialize connection
   useEffect(() => {
     connectWebSocket();
