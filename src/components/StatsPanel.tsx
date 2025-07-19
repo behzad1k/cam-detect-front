@@ -46,7 +46,7 @@ export default function StatsPanel({
       {hasDetections && (
         <div className="px-3 py-2 bg-black/80 backdrop-blur-md rounded-lg border border-white/20">
           <div className="text-white text-xs space-y-1">
-            {Object.entries(detections).map(([modelName, result]) => {
+            {Object.entries(detections).map(([modelName]) => {
               const modelConfig = availableModels.find(m => m.id === modelName);
               return (
                 <div key={modelName} className="flex items-center space-x-2">
