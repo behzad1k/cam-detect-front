@@ -55,7 +55,7 @@ export default function StatsPanel({
                     style={{ backgroundColor: modelConfig?.color || '#ffffff' }}
                   />
                   <span className="font-mono">
-                    {modelConfig?.name || modelName}: {result.count}
+                    {modelConfig?.name || modelName}
                   </span>
                 </div>
               );
