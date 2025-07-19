@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'YOLO Detection App',
-  description: 'Real-time object detection using YOLO models',
+  title: 'SeeDeep.Ai',
+  description: 'Real-time object detection',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   other: {
     'apple-mobile-web-app-capable': 'yes',

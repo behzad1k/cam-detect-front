@@ -1,5 +1,6 @@
 'use client';
 
+import { DEFAULT_CAMERA_CONFIG } from '@/types/constants';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import CameraView from '@/components/CameraView';
 import FloatingControls from '@/components/FloatingControls';
@@ -28,7 +29,7 @@ const AVAILABLE_CAMERAS: AvailableCameras = {
 const AVAILABLE_MODELS: Model[] = [
   {
     id: 'face_detection',
-    name: 'Face Detection',
+    name: 'Face-Mask Detection',
     color: '#ef4444'
   },
   {
@@ -86,7 +87,7 @@ export default function Home() {
       const timeSinceLastSend = now - lastSentTimeRef.current;
 
       // If less than 500ms (2fps = 1 frame every 500ms) has passed since last send
-      if (timeSinceLastSend < 750) {
+      if (timeSinceLastSend < DEFAULT_CAMERA_CONFIG.frameRate * 1000 / 2) {
         // Skip this frame or queue it (implementation below)
         return;
       }

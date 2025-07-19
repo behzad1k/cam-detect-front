@@ -1,6 +1,7 @@
 'use client';
 
 import { DetectionResult } from '@/types';
+import { DEFAULT_CAMERA_CONFIG } from '@/types/constants';
 
 interface Stats {
   fps: number;
@@ -34,7 +35,7 @@ export default function StatsPanel({
         <div className="px-3 py-2 bg-black/80 backdrop-blur-md rounded-lg border border-white/20">
           <div className="text-white text-xs space-y-1">
             <div className="flex items-center space-x-4">
-              <span>FPS: <span className="font-mono">{stats.fps}</span></span>
+              <span>FPS: <span className="font-mono">{DEFAULT_CAMERA_CONFIG.frameRate}</span></span>
               <span>Latency: <span className="font-mono">{stats.latency}ms</span></span>
             </div>
           </div>

@@ -4,7 +4,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost
 export const DEFAULT_CAMERA_CONFIG = {
   width: 640,
   height: 480,
-  frameRate: 30
+  frameRate: 2
 } as const;
 
 export const DEFAULT_DETECTION_CONFIG = {
