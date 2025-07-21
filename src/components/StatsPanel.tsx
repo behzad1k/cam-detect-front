@@ -1,7 +1,7 @@
 'use client';
 
 import { DetectionResult } from '@/types';
-import { DEFAULT_CAMERA_CONFIG } from '@/types/constants';
+import { AVAILABLE_MODELS, DEFAULT_CAMERA_CONFIG } from '@/types/constants';
 
 interface Stats {
   fps: number;
@@ -11,17 +11,12 @@ interface Stats {
 interface StatsPanelProps {
   stats: Stats;
   detections: Record<string, DetectionResult>;
-  availableModels: Array<{
-    id: string;
-    name: string;
-    color: string
-  }>;
 }
 
 export default function StatsPanel({
                                      stats,
                                      detections,
-                                     availableModels
+
                                    }: StatsPanelProps) {
   const hasStats = stats.fps > 0 || stats.latency > 0;
   const hasDetections = Object.keys(detections).length > 0;
@@ -29,7 +24,7 @@ export default function StatsPanel({
   if (!hasStats && !hasDetections) return null;
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-between">
+    <div className="absolute bottom-4 right-4 z-10 flex flex-col justify-between min-w-10">
       {/* Performance Stats */}
       {hasStats && (
         <div className="px-3 py-2 bg-black/80 backdrop-blur-md rounded-lg border border-white/20">
@@ -47,9 +42,9 @@ export default function StatsPanel({
         <div className="px-3 py-2 bg-black/80 backdrop-blur-md rounded-lg border border-white/20">
           <div className="text-white text-xs space-y-1">
             {Object.entries(detections).map(([modelName]) => {
-              const modelConfig = availableModels.find(m => m.id === modelName);
+              const modelConfig = AVAILABLE_MODELS.find(m => m.id === modelName);
               return (
-                <div key={modelName} className="flex items-center space-x-2">
+                <div key={modelName} className="flex items-center space-x-4">
                   <div
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: modelConfig?.color || '#ffffff' }}

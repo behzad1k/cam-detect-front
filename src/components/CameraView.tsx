@@ -1,5 +1,6 @@
 'use client';
 
+import { AVAILABLE_MODELS } from '@/types/constants';
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { DetectionResult } from '@/types';
 
@@ -9,19 +10,6 @@ interface CameraViewProps {
   stream: MediaStream | null;
   onFrameCapture: (canvas: HTMLCanvasElement) => void;
 }
-
-const AVAILABLE_MODELS = [
-  {
-    id: 'face_detection',
-    name: 'Face Detection',
-    color: '#ef4444'
-  },
-  {
-    id: 'cap_detection',
-    name: 'Cap Detection',
-    color: '#3b82f6'
-  }
-];
 
 export default function CameraView({
                                      isStreaming,

@@ -41,6 +41,7 @@ const DetectionCanvas = forwardRef<DetectionCanvasRef, DetectionCanvasProps>(
       const colors: { [key: string]: string } = {
         face_detection: '#ff0000',
         cap_detection: '#00ff00',
+        ppe_detection: '#0000ff',
         // Add more colors for additional models
       };
 

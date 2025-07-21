@@ -8,7 +8,8 @@ import StatusIndicators from '@/components/StatusIndicators';
 import StatsPanel from '@/components/StatsPanel';
 import { useCamera } from '@/hooks/useCamera';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { Camera, Model } from '@/types';
+import { useModels } from '@/hooks/useModels';
+import { Camera, ModelRequest } from '@/types';
 
 interface AvailableCameras {
   [key: string]: Camera;
@@ -26,22 +27,14 @@ const AVAILABLE_CAMERAS: AvailableCameras = {
     icon: '#3b82f6'
   }
 };
-const AVAILABLE_MODELS: Model[] = [
-  {
-    id: 'face_detection',
-    name: 'Face-Mask Detection',
-    color: '#ef4444'
-  },
-  {
-    id: 'cap_detection',
-    name: 'Cap Detection',
-    color: '#3b82f6'
-  }
-];
+
 
 export default function Home() {
-  const [selectedModels, setSelectedModels] = useState<string[]>(['cap_detection']);
+  const [selectedModels, setSelectedModels] = useState<ModelRequest[]>([
+    { name: 'cap_detection' }
+  ]);
   const [selectedCamera, setSelectedCamera] = useState<Camera>(AVAILABLE_CAMERAS.environment!);
+  const [availableClasses, setAvailableClasses] = useState<Record<string, string[]>>({});
 
   const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSentTimeRef = useRef<number>(0);
@@ -53,6 +46,7 @@ export default function Home() {
     stream,
     stopCamera
   } = useCamera(selectedCamera);
+
   const {
     isConnected,
     detections,
@@ -61,40 +55,98 @@ export default function Home() {
     stats
   } = useWebSocket();
 
-  // Combined error state
-  const error = cameraError || wsError;
+  const {
+    models,
+    // loading: modelsLoading,
+    error: modelsError,
+    loadModel,
+    getModelClasses
+  } = useModels();
 
-  // Handle model selection
+  // Combined error state
+  const error = cameraError || wsError || modelsError;
+
+  // Load available classes for models
+  useEffect(() => {
+    const loadAvailableClasses = async () => {
+      const classesMap: Record<string, string[]> = {};
+
+      for (const model of models.filter(m => m.loaded)) {
+        if (model.available_classes) {
+          classesMap[model.name] = model.available_classes;
+        } else {
+          const classes = await getModelClasses(model.name);
+          if (classes) {
+            classesMap[model.name] = classes;
+          }
+        }
+      }
+
+      setAvailableClasses(classesMap);
+    };
+
+    if (models.length > 0) {
+      loadAvailableClasses();
+    }
+  }, [models, getModelClasses]);
+
+  // Handle model selection (now with class filtering support)
   const handleModelToggle = useCallback((modelId: string) => {
+    setSelectedModels(prev => {
+      const existingIndex = prev.findIndex(m => m.name === modelId);
+
+      if (existingIndex >= 0) {
+        // Remove model
+        return prev.filter(m => m.name !== modelId);
+      } else {
+        // Add model
+        return [...prev, { name: modelId }];
+      }
+    });
+  }, []);
+
+  // Handle class filter updates
+  const handleClassFilterUpdate = useCallback((modelName: string, classes: string[]) => {
     setSelectedModels(prev =>
-      prev.includes(modelId)
-        ? prev.filter(id => id !== modelId)
-        : [...prev, modelId]
+      prev.map(model =>
+        model.name === modelName
+          ? { ...model, classFilter: classes.length > 0 ? classes : undefined }
+          : model
+      )
     );
   }, []);
-  interface FrameSender {
-    (frameData: ArrayBuffer, models: string[]): void;
-  }
+
+  // Load model if not already loaded
+  const ensureModelLoaded = useCallback(async (modelName: string) => {
+    const model = models.find(m => m.name === modelName);
+    if (model && !model.loaded) {
+      await loadModel(modelName);
+    }
+  }, [models, loadModel]);
 
   const captureAndSendFrame = async (
     canvas: HTMLCanvasElement,
-    sendFrame: FrameSender,
-    selectedModels: string[],
+    sendFrame: (frameData: ArrayBuffer, models: ModelRequest[]) => void,
+    selectedModels: ModelRequest[],
     quality = 0.6
   ): Promise<void> => {
     try {
       const now = Date.now();
       const timeSinceLastSend = now - lastSentTimeRef.current;
 
-      // If less than 500ms (2fps = 1 frame every 500ms) has passed since last send
-      if (timeSinceLastSend < DEFAULT_CAMERA_CONFIG.frameRate * 1000 / 2) {
-        // Skip this frame or queue it (implementation below)
+      // Rate limiting: respect the configured frame rate
+      if (timeSinceLastSend < 1000 / DEFAULT_CAMERA_CONFIG.frameRate) {
         return;
       }
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         throw new Error('Could not get canvas context');
+      }
+
+      // Ensure all selected models are loaded
+      for (const model of selectedModels) {
+        await ensureModelLoaded(model.name);
       }
 
       // Convert to Blob (more efficient than base64)
@@ -126,24 +178,29 @@ export default function Home() {
 
     } catch (err) {
       console.error('Error capturing frame:', err instanceof Error ? err.message : err);
-      // Consider adding error handling/recovery logic here
     }
   };
 
-  // Usage example:
   // Handle frame capture
   const handleFrameCapture = useCallback(async (canvas: HTMLCanvasElement) => {
     if (!isConnected || selectedModels.length === 0) return;
 
     await captureAndSendFrame(canvas, sendFrame, selectedModels, 0.6);
+  }, [isConnected, selectedModels, sendFrame, ensureModelLoaded]);
 
-    // try {
-    //   const imageData = canvas.toDataURL('image/jpeg', 0.5);
-    //   sendFrame(imageData, selectedModels);
-    // } catch (err) {
-    //   console.error('Error capturing frame:', err);
-    // }
-  }, [isConnected, selectedModels, sendFrame, selectedCamera]);
+  // Get currently selected model IDs for the UI
+  const selectedModelIds = selectedModels.map(m => m.name);
+
+  // Check if a model is selected
+  const isModelSelected = useCallback((modelId: string) => {
+    return selectedModelIds.includes(modelId);
+  }, [selectedModelIds]);
+
+  // Get class filter for a specific model
+  const getModelClassFilter = useCallback((modelName: string) => {
+    const model = selectedModels.find(m => m.name === modelName);
+    return model?.classFilter || [];
+  }, [selectedModels]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -167,12 +224,18 @@ export default function Home() {
 
       {/* Floating Controls */}
       <FloatingControls
-        selectedModels={selectedModels}
+        selectedModels={selectedModelIds}
         onModelToggle={handleModelToggle}
-        availableModels={AVAILABLE_MODELS}
         availableCameras={Object.values(AVAILABLE_CAMERAS)}
         selectedCamera={selectedCamera}
         setSelectedCamera={setSelectedCamera}
+        // New props for class filtering
+        availableClasses={availableClasses}
+        onClassFilterUpdate={handleClassFilterUpdate}
+        getModelClassFilter={getModelClassFilter}
+        isModelSelected={isModelSelected}
+        models={models}
+        onLoadModel={loadModel}
       />
 
       {/* Status Indicators */}
@@ -180,14 +243,14 @@ export default function Home() {
         isConnected={isConnected}
         isStreaming={isStreaming}
         error={error}
+        // modelsLoading={modelsLoading}
       />
 
       {/* Stats Panel */}
       <StatsPanel
         stats={stats}
         detections={detections}
-        availableModels={AVAILABLE_MODELS}
-
+        // selectedModels={selectedModels}
       />
     </div>
   );

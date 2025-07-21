@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { DetectionResult } from '@/types';
+import { DetectionResult, ModelRequest } from '@/types';
 
 interface WebSocketMessage {
   type: string;
@@ -14,7 +14,7 @@ interface UseWebSocketReturn {
   isConnected: boolean;
   detections: Record<string, DetectionResult>;
   error: string | null;
-  sendFrame: (imageData: ArrayBuffer, models: string[]) => void;
+  sendFrame: (imageData: ArrayBuffer, models: ModelRequest[]) => void;
   stats: { fps: number; latency: number };
 }
 
@@ -28,6 +28,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const frameCountRef = useRef<number>(0);
   const lastFrameTimeRef = useRef<number>(0);
+  const sentTimestampRef = useRef<number>(0);
 
   const connectWebSocket = useCallback(() => {
     try {
@@ -53,9 +54,9 @@ export function useWebSocket(): UseWebSocketReturn {
           if (message.type === 'detections' && message.results) {
             setDetections(message.results);
 
-            // Calculate latency
-            if (message.timestamp) {
-              const latency = Date.now() - message.timestamp;
+            // Calculate latency using the timestamp we sent
+            if (message.timestamp && sentTimestampRef.current) {
+              const latency = Date.now() - sentTimestampRef.current;
               setStats(prev => ({ ...prev, latency }));
             }
 
@@ -99,55 +100,100 @@ export function useWebSocket(): UseWebSocketReturn {
     }
   }, []);
 
-  const sendFrame = useCallback((imageData: ArrayBuffer, models: string[]) => {
+  const sendFrame = useCallback((imageData: ArrayBuffer, models: ModelRequest[]) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || models.length === 0) {
       return;
     }
 
     const timestamp = Date.now();
+    sentTimestampRef.current = timestamp;
+
     try {
-      // Convert models to bytes (UTF-8 encoded)
-      const modelNamesBytes = models.map(model => {
-        const encoder = new TextEncoder();
-        return encoder.encode(model);
-      });
+      const encoder = new TextEncoder();
 
-      // Calculate total buffer size
-      const totalLength =
-        4 + // timestamp (4 bytes)
-        1 + // model count (1 byte)
-        modelNamesBytes.reduce((sum, bytes) => sum + 1 + bytes.length, 0) + // models data
-        imageData.byteLength; // image data
+      // Calculate buffer size needed
+      let bufferSize = 4 + 1; // timestamp + model count
 
-      // Create combined buffer
-      const buffer = new Uint8Array(totalLength);
-      const view = new DataView(buffer.buffer);
+      for (const model of models) {
+        const modelNameBytes = encoder.encode(model.name);
+        bufferSize += 1 + modelNameBytes.length; // name length + name
+        bufferSize += 1; // has class filter flag
+
+        if (model.classFilter && model.classFilter.length > 0) {
+          bufferSize += 1; // class count
+          for (const className of model.classFilter) {
+            const classNameBytes = encoder.encode(className);
+            bufferSize += 1 + classNameBytes.length; // class name length + class name
+          }
+        }
+      }
+
+      bufferSize += imageData.byteLength; // image data
+
+      // Create buffer
+      const buffer = new ArrayBuffer(bufferSize);
+      const uint8View = new Uint8Array(buffer);
+      const dataView = new DataView(buffer);
+
+      let position = 0;
 
       // Write timestamp (4 bytes, big-endian)
-      view.setUint32(0, Math.floor(timestamp / 1000));
+      dataView.setUint32(position, Math.floor(timestamp / 1000), false);
+      position += 4;
 
       // Write model count (1 byte)
-      buffer[4] = models.length;
+      uint8View[position] = models.length;
+      position += 1;
 
-      // Write model names (each prefixed with 1 byte length)
-      let position = 5;
-      for (const modelBytes of modelNamesBytes) {
-        buffer[position] = modelBytes.length; // 1 byte length prefix
+      // Write each model's data
+      for (const model of models) {
+        const modelNameBytes = encoder.encode(model.name);
+
+        // Model name length
+        uint8View[position] = modelNameBytes.length;
         position += 1;
-        buffer.set(modelBytes, position); // model name bytes
-        position += modelBytes.length;
+
+        // Model name
+        uint8View.set(modelNameBytes, position);
+        position += modelNameBytes.length;
+
+        // Has class filter flag
+        const hasClassFilter = model.classFilter && model.classFilter.length > 0;
+        uint8View[position] = hasClassFilter ? 1 : 0;
+        position += 1;
+
+        if (hasClassFilter && model.classFilter) {
+          // Class count
+          uint8View[position] = model.classFilter.length;
+          position += 1;
+
+          // Each class name
+          for (const className of model.classFilter) {
+            const classNameBytes = encoder.encode(className);
+
+            // Class name length
+            uint8View[position] = classNameBytes.length;
+            position += 1;
+
+            // Class name
+            uint8View.set(classNameBytes, position);
+            position += classNameBytes.length;
+          }
+        }
       }
 
       // Append image data
-      buffer.set(new Uint8Array(imageData), position);
+      uint8View.set(new Uint8Array(imageData), position);
 
       // Send binary data
-      wsRef.current.send(buffer.buffer);
+      wsRef.current.send(buffer);
+
     } catch (err) {
       console.error('Error sending frame:', err);
       setError('Failed to send frame to server');
     }
   }, []);
+
   // Initialize connection
   useEffect(() => {
     connectWebSocket();
