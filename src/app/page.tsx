@@ -181,9 +181,6 @@ export default function Home() {
     await captureAndSendFrame(canvas, sendFrame, selectedModels, 0.6);
   }, [isConnected, selectedModels, sendFrame, ensureModelLoaded]);
 
-  // Get currently selected model IDs for the UI
-  const selectedModelIds = selectedModels.map(m => m.name);
-
   // Get class filter for a specific model
   const getModelClassFilter = useCallback((modelName: string) => {
     let model = selectedModels.find(m => m.name === modelName);

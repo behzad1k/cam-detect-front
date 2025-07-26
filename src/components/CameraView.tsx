@@ -128,12 +128,13 @@ export default function CameraView({
 
   // Expose capture function
   useEffect(() => {
-    if (!isVideoReady) return;
+    if (!isVideoReady) { // @ts-ignore
+      return;
+    }
 
     const interval = setInterval(captureFrame, 100);
     return () => clearInterval(interval);
   }, [captureFrame, isVideoReady]);
-  ;
 
   useEffect(() => {
     if (stream && videoRef.current) {
