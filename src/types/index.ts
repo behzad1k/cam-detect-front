@@ -27,7 +27,7 @@ export interface Camera {
 
 export interface ModelRequest {
   name: string;
-  classFilter?: string[] | undefined;
+  classFilter: string[];
 }
 
 export interface ModelInfo {

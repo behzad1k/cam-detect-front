@@ -31,7 +31,7 @@ const AVAILABLE_CAMERAS: AvailableCameras = {
 
 export default function Home() {
   const [selectedModels, setSelectedModels] = useState<ModelRequest[]>([
-    { name: 'cap_detection' }
+    { name: 'cap_detection', classFilter: ['cap'] }
   ]);
   const [selectedCamera, setSelectedCamera] = useState<Camera>(AVAILABLE_CAMERAS.environment!);
   const [availableClasses, setAvailableClasses] = useState<Record<string, string[]>>({});
@@ -89,32 +89,6 @@ export default function Home() {
       loadAvailableClasses();
     }
   }, [models, getModelClasses]);
-
-  // Handle model selection (now with class filtering support)
-  const handleModelToggle = useCallback((modelId: string) => {
-    setSelectedModels(prev => {
-      const existingIndex = prev.findIndex(m => m.name === modelId);
-
-      if (existingIndex >= 0) {
-        // Remove model
-        return prev.filter(m => m.name !== modelId);
-      } else {
-        // Add model
-        return [...prev, { name: modelId }];
-      }
-    });
-  }, []);
-
-  // Handle class filter updates
-  const handleClassFilterUpdate = useCallback((modelName: string, classes: string[]) => {
-    setSelectedModels(prev =>
-      prev.map(model =>
-        model.name === modelName
-          ? { ...model, classFilter: classes.length > 0 ? classes : undefined }
-          : model
-      )
-    );
-  }, []);
 
   // Load model if not already loaded
   const ensureModelLoaded = useCallback(async (modelName: string) => {
@@ -181,6 +155,25 @@ export default function Home() {
     }
   };
 
+  const handleClassToggle = (modelId: string, className: string) => {
+    setSelectedModels(prev => {
+      const cp = [...prev]
+      let modelIndex = cp.findIndex(e => e.name == modelId)
+      let model: ModelRequest = {...(cp[modelIndex] || { name: modelId, classFilter: [] })};
+
+      model.classFilter = getModelClassFilter(modelId)?.includes(className)
+        ? model.classFilter?.filter(c => c !== className)
+        : [...model.classFilter, className]
+
+      if (modelIndex < 0){
+        cp.push(model)
+      } else {
+        cp[modelIndex] = model;
+      }
+      return cp;
+    })
+  };
+
   // Handle frame capture
   const handleFrameCapture = useCallback(async (canvas: HTMLCanvasElement) => {
     if (!isConnected || selectedModels.length === 0) return;
@@ -191,17 +184,11 @@ export default function Home() {
   // Get currently selected model IDs for the UI
   const selectedModelIds = selectedModels.map(m => m.name);
 
-  // Check if a model is selected
-  const isModelSelected = useCallback((modelId: string) => {
-    return selectedModelIds.includes(modelId);
-  }, [selectedModelIds]);
-
   // Get class filter for a specific model
   const getModelClassFilter = useCallback((modelName: string) => {
-    const model = selectedModels.find(m => m.name === modelName);
+    let model = selectedModels.find(m => m.name === modelName);
     return model?.classFilter || [];
   }, [selectedModels]);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -224,18 +211,16 @@ export default function Home() {
 
       {/* Floating Controls */}
       <FloatingControls
-        selectedModels={selectedModelIds}
-        onModelToggle={handleModelToggle}
+        selectedModels={selectedModels}
         availableCameras={Object.values(AVAILABLE_CAMERAS)}
         selectedCamera={selectedCamera}
         setSelectedCamera={setSelectedCamera}
         // New props for class filtering
         availableClasses={availableClasses}
-        onClassFilterUpdate={handleClassFilterUpdate}
         getModelClassFilter={getModelClassFilter}
-        isModelSelected={isModelSelected}
         models={models}
         onLoadModel={loadModel}
+        onClassToggle={handleClassToggle}
       />
 
       {/* Status Indicators */}

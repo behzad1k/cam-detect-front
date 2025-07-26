@@ -6,37 +6,34 @@ import { useState } from 'react';
 import { Settings, X, ChevronDown, ChevronRight, Filter, Loader2 } from 'lucide-react';
 
 interface FloatingControlsProps {
-  selectedModels: string[];
-  onModelToggle: (modelId: string) => void;
+  selectedModels: any;
   availableCameras: Camera[];
   selectedCamera: Camera;
   setSelectedCamera: (camera: Camera) => void;
   availableClasses: Record<string, string[]>;
-  onClassFilterUpdate: (modelName: string, classes: string[]) => void;
   getModelClassFilter: (modelName: string) => string[];
-  isModelSelected: (modelId: string) => boolean;
   models: ModelInfo[];
   onLoadModel: (modelName: string) => Promise<boolean>;
+  onClassToggle: (modelId: string, className: string) => void;
 }
 
 export default function FloatingControls({
                                            selectedModels,
-                                           onModelToggle,
                                            availableCameras,
                                            selectedCamera,
                                            setSelectedCamera,
                                            availableClasses,
-                                           onClassFilterUpdate,
                                            getModelClassFilter,
-                                           isModelSelected,
                                            models,
                                            onLoadModel,
+  onClassToggle
                                          }: FloatingControlsProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
   const [loadingModels, setLoadingModels] = useState<Set<string>>(new Set());
 
-  const toggleModelExpansion = (modelId: string) => {
+  const toggleModelExpansion = async (modelId: string) => {
+    await handleModelToggle(modelId);
     const newExpanded = new Set(expandedModels);
     if (newExpanded.has(modelId)) {
       newExpanded.delete(modelId);
@@ -48,7 +45,6 @@ export default function FloatingControls({
 
   const handleModelToggle = async (modelId: string) => {
     // If model is being selected and not loaded, load it first
-    if (!isModelSelected(modelId)) {
       const modelInfo = models.find(m => m.name === modelId);
       if (modelInfo && !modelInfo.loaded) {
         setLoadingModels(prev => new Set(prev).add(modelId));
@@ -64,27 +60,8 @@ export default function FloatingControls({
           });
         }
       }
-    }
 
-    onModelToggle(modelId);
-  };
-
-  const handleClassToggle = (modelId: string, className: string) => {
-    const currentFilter = getModelClassFilter(modelId);
-    const newFilter = currentFilter.includes(className)
-      ? currentFilter.filter(c => c !== className)
-      : [...currentFilter, className];
-
-    onClassFilterUpdate(modelId, newFilter);
-  };
-
-  const handleSelectAllClasses = (modelId: string) => {
-    const allClasses = availableClasses[modelId] || [];
-    onClassFilterUpdate(modelId, allClasses);
-  };
-
-  const handleClearAllClasses = (modelId: string) => {
-    onClassFilterUpdate(modelId, []);
+    // onModelToggle(modelId);
   };
 
   const getModelStatus = (modelId: string) => {
@@ -125,7 +102,6 @@ export default function FloatingControls({
 
           <div className="space-y-2">
             {AVAILABLE_MODELS.map((model) => {
-              const isSelected = isModelSelected(model.id);
               const isExpanded = expandedModels.has(model.id);
               const modelStatus = getModelStatus(model.id);
               //@ts-ignore
@@ -137,16 +113,8 @@ export default function FloatingControls({
                   {/* Model Header */}
                   <div className="flex items-center p-3 hover:bg-white/5 transition-colors">
                     {/* Model Checkbox */}
-                    <label className="flex items-center space-x-3 cursor-pointer flex-1">
+                    <label className="flex items-center space-x-3 cursor-pointer flex-1" htmlFor={model.id + '_expand'}>
                       <div className="relative">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleModelToggle(model.id)}
-                          disabled={modelStatus === 'loading'}
-                          className="w-4 h-4 rounded border-gray-300"
-                          style={{ accentColor: model.color }}
-                        />
                         {modelStatus === 'loading' && (
                           <Loader2 className="absolute -top-1 -left-1 w-6 h-6 animate-spin text-blue-400" />
                         )}
@@ -174,8 +142,8 @@ export default function FloatingControls({
                               modelStatus === 'loading' ? 'Loading...' : 'Not Loaded'}
                           </span>
 
-                          {isSelected && hasClasses && (
-                            <span className="text-xs text-gray-400 flex items-center space-x-1">
+                          {hasClasses && (
+                            <span className="text-xs text-gray-400 flex items-center space-x-1" >
                               <Filter size={12} />
                               <span>{getFilterSummary(model.id)}</span>
                             </span>
@@ -185,8 +153,8 @@ export default function FloatingControls({
                     </label>
 
                     {/* Expand Button */}
-                    {isSelected && hasClasses && (
                       <button
+                        id={model.id + '_expand'}
                         onClick={() => toggleModelExpansion(model.id)}
                         className="p-1 hover:bg-white/10 rounded transition-colors"
                       >
@@ -196,30 +164,11 @@ export default function FloatingControls({
                           <ChevronRight size={16} className="text-gray-400" />
                         )}
                       </button>
-                    )}
                   </div>
 
                   {/* Class Filter Section */}
-                  {isSelected && isExpanded && hasClasses && (
+                  {isExpanded && hasClasses && (
                     <div className="border-t border-white/10 p-3 bg-white/5">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-medium text-gray-300">Class Filter</span>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleSelectAllClasses(model.id)}
-                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                          >
-                            All
-                          </button>
-                          <button
-                            onClick={() => handleClearAllClasses(model.id)}
-                            className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
-                          >
-                            None
-                          </button>
-                        </div>
-                      </div>
-
                       <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
                         {availableClasses[model.id]?.map((className) => (
                           <label
@@ -228,8 +177,9 @@ export default function FloatingControls({
                           >
                             <input
                               type="checkbox"
+                              disabled={currentFilter.length >= 5}
                               checked={currentFilter.includes(className)}
-                              onChange={() => handleClassToggle(model.id, className)}
+                              onChange={() => onClassToggle(model.id, className)}
                               className="w-3 h-3 rounded"
                               style={{ accentColor: model.color }}
                             />
@@ -282,7 +232,7 @@ export default function FloatingControls({
             </div>
           )}
 
-          {selectedModels.some(modelId => getModelStatus(modelId) === 'not-loaded') && (
+          {selectedModels.some((modelId: string) => getModelStatus(modelId) === 'not-loaded') && (
             <div className="mt-2 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
               <p className="text-blue-200 text-xs">
                 Some models need to be loaded. They will load automatically when selected.
