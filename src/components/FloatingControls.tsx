@@ -65,7 +65,7 @@ export default function FloatingControls({
   };
 
   const getModelStatus = (modelId: string) => {
-    const modelInfo = models.find(m => m.name === modelId);
+    const modelInfo = models?.find(m => m.name === modelId);
     if (loadingModels.has(modelId)) return 'loading';
     if (!modelInfo) return 'unknown';
     if (!modelInfo.loaded) return 'not-loaded';
@@ -177,7 +177,6 @@ export default function FloatingControls({
                           >
                             <input
                               type="checkbox"
-                              disabled={currentFilter.length >= 5}
                               checked={currentFilter.includes(className)}
                               onChange={() => onClassToggle(model.id, className)}
                               className="w-3 h-3 rounded"

@@ -132,7 +132,7 @@ export default function Home() {
         throw new Error('Failed to convert canvas to blob');
       }
 
-      // Read blob as ArrayBuffer
+      // Read blob as ArrayBuffer ` `
       const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
@@ -160,12 +160,14 @@ export default function Home() {
       const cp = [...prev]
       let modelIndex = cp.findIndex(e => e.name == modelId)
       let model: ModelRequest = {...(cp[modelIndex] || { name: modelId, classFilter: [] })};
-
       model.classFilter = getModelClassFilter(modelId)?.includes(className)
         ? model.classFilter?.filter(c => c !== className)
         : [...model.classFilter, className]
 
       if (modelIndex < 0){
+        if(model.classFilter.length >=5){
+          delete model.classFilter[0]
+        }
         cp.push(model)
       } else {
         cp[modelIndex] = model;
