@@ -46,5 +46,10 @@ export const AVAILABLE_MODELS: Model[] = [
     id: 'ppe_detection',
     name: 'PPE Detection',
     color: '#317503'
+  },
+  {
+    id: 'weapon_detection',
+    name: 'Weapon Detection',
+    color: '#fff016'
   }
 ] as const
