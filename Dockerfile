@@ -31,13 +31,6 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Debug: Print build environment
-RUN echo "🔧 Build Environment:"
-RUN echo "  NODE_ENV: ${NODE_ENV}"
-RUN echo "  NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}"
-RUN echo "  NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}"
-
-# Build will use environment variables from docker-compose
 RUN npm run build
 
 # Runner
@@ -51,9 +44,11 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
 
+# Critical Fix: Copy required node_modules
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy standalone files
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
@@ -62,14 +57,7 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
-
-# Debug: Print runtime environment
-RUN echo "🚀 Runtime Environment:"
-RUN echo "  NODE_ENV: ${NODE_ENV}"
-RUN echo "  PORT: ${PORT}"
-RUN echo "  HOSTNAME: ${HOSTNAME}"
 
 CMD ["node", "server.js"]
