@@ -55,6 +55,6 @@ export const AVAILABLE_MODELS: Model[] = [
   {
     id: 'others_detection',
     name: 'Other Objects',
-    color: '#fff016'
+    color: '#da4fef'
   }
 ] as const
