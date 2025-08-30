@@ -35,12 +35,12 @@ export const AVAILABLE_MODELS: Model[] = [
   {
     id: 'face_detection',
     name: 'Face-Mask Detection',
-    color: '#ef4444'
+    color: '#2faee4'
   },
   {
     id: 'cap_detection',
     name: 'Cap Detection',
-    color: '#3b82f6'
+    color: '#3bf6be'
   },
   {
     id: 'ppe_detection',
@@ -51,6 +51,11 @@ export const AVAILABLE_MODELS: Model[] = [
     id: 'weapon_detection',
     name: 'Weapon Detection',
     color: '#fff016'
+  },
+  {
+    id: 'fire_detection',
+    name: 'Fire Detection',
+    color: '#ff1616'
   },
   {
     id: 'others_detection',
