@@ -12,7 +12,8 @@ export const DEFAULT_CAMERA_CONFIG = {
 export const DEFAULT_DETECTION_CONFIG = {
   confidenceThreshold: 0.5,
   maxDetections: 100,
-  frameInterval: 100, // milliseconds (10 FPS)
+  frameInterval: 1000, // milliseconds (10 FPS)
+  fps: 3
 } as const;
 
 export const MODEL_COLORS: Record<string, string> = {
@@ -63,3 +64,33 @@ export const AVAILABLE_MODELS: Model[] = [
     color: '#da4fef'
   }
 ] as const
+
+export const TRACKING_CONSTANTS = {
+  DEFAULT_WS_URL: 'ws://localhost:8000/ws',
+
+  TRACKER_TYPES: {
+    CENTROID: 'centroid',
+    KALMAN: 'kalman',
+    DEEP_SORT: 'deep_sort',
+    BYTE_TRACK: 'byte_track'
+  },
+
+  DEFAULT_MODELS: [
+    { name: 'ppe_detection', classFilter: [] },
+    { name: 'face_detection', classFilter: [] },
+    { name: 'vehicle_detection', classFilter: [] }
+  ],
+
+  COMMON_CLASSES: {
+    PPE: ['mask', 'cap'],
+    PERSON: ['person'],
+    VEHICLE: ['car', 'truck', 'motorcycle', 'bicycle'],
+    SAFETY: ['fire_extinguisher', 'safety_sign', 'barrier']
+  },
+
+  ALERT_THRESHOLDS: {
+    SPEED_LIMIT: 5, // m/s
+    LOITERING_TIME: 300, // seconds
+    CROWD_SIZE: 10 // people
+  }
+};

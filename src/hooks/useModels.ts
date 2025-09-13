@@ -1,87 +1,150 @@
-'use client';
-
-import { ModelInfo, UseModelsReturn } from '@/types';
 import { useState, useEffect, useCallback } from 'react';
+import { MODEL_DEFINITIONS, ModelDefinition } from '@/utils/modelDefinitions';
+import { apiService } from '@/services/apiService';
 
+interface ModelInfo extends ModelDefinition {
+  status: 'loaded' | 'unloaded' | 'loading' | 'error';
+  isAvailable: boolean;
+}
 
-export function useModels(): UseModelsReturn {
-  const [models, setModels] = useState<ModelInfo[]>([]);
+export const useModels = () => {
+  const [models, setModels] = useState<Record<string, ModelInfo>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.10:8000';
+  const initializeModels = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  const fetchModels = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`${apiUrl}/models`);
+      // Get available models from backend
+      const response = await apiService.getModels();
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Initialize all models with their definitions
+      const initializedModels: Record<string, ModelInfo> = {};
+      Object.entries(MODEL_DEFINITIONS).forEach(([modelName, definition]) => {
+        initializedModels[modelName] = {
+          ...definition,
+          status: 'unloaded',
+          isAvailable: false
+        };
+      });
+      // Update with backend status
+      if (!response.error && response.data) {
+        const backendModels = response.data.models || response.data;
+
+        Object.entries(backendModels).forEach(([modelName, modelInfo]: [string, any]) => {
+          if (initializedModels[modelInfo.name]) {
+            initializedModels[modelInfo.name] = {
+              ...initializedModels[modelInfo.name],
+              status: modelInfo.status || 'unloaded',
+              isAvailable: true
+            };
+          } else {
+            // Handle unknown models from backend
+            console.warn(`Unknown model from backend: ${modelInfo.name}`);
+            initializedModels[modelInfo.name] = {
+              name: modelInfo.name,
+              classes: modelInfo.classes || [],
+              description: `Unknown model: ${modelName}`,
+              category: 'detection' as const,
+              modelSize: 'nano' as const,
+              estimatedRAM: 'Unknown',
+              status: modelInfo.status || 'unloaded',
+              isAvailable: true
+            };
+          }
+        });
       }
 
-      const data: ModelInfo[] = await response.json();
-      setModels(data);
-      setError(null);
+      setModels(initializedModels);
+      console.log('Initialized models:', initializedModels);
+
     } catch (err) {
-      console.error('Error fetching models:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch models');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch models';
+      console.error('Error initializing models:', err);
+      setError(errorMessage);
+
+      // Fallback to definitions only
+      const fallbackModels: Record<string, ModelInfo> = {};
+      Object.entries(MODEL_DEFINITIONS).forEach(([modelName, definition]) => {
+        fallbackModels[modelName] = {
+          ...definition,
+          status: 'unloaded',
+          isAvailable: false
+        };
+      });
+      setModels(fallbackModels);
     } finally {
       setLoading(false);
     }
-  }, [apiUrl]);
+  }, []);
 
-  const loadModel = useCallback(async (modelName: string): Promise<boolean> => {
-    try {
-      const response = await fetch(`${apiUrl}/models/${modelName}/load`, {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Refresh models list after loading
-      await fetchModels();
-      return true;
-    } catch (err) {
-      console.error('Error loading model:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load model');
+  const loadModel = useCallback(async (modelName: string) => {
+    if (!models[modelName]?.isAvailable) {
+      console.warn(`Model ${modelName} is not available on backend`);
       return false;
     }
-  }, [apiUrl, fetchModels]);
 
-  const getModelClasses = useCallback(async (modelName: string): Promise<string[] | null> => {
+    setModels(prev => ({
+      ...prev,
+      [modelName]: { ...prev[modelName], status: 'loading' }
+    }));
+
     try {
-      const response = await fetch(`${apiUrl}/models/${modelName}/classes`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const response = await apiService.loadModel(modelName);
+      if (!response.error) {
+        setModels(prev => ({
+          ...prev,
+          [modelName]: { ...prev[modelName], status: 'loaded' }
+        }));
+        return true;
+      } else {
+        setModels(prev => ({
+          ...prev,
+          [modelName]: { ...prev[modelName], status: 'error' }
+        }));
+        return false;
       }
-
-      const data = await response.json();
-      return data.class_names || null;
     } catch (err) {
-      console.error('Error fetching model classes:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch model classes');
-      return null;
+      console.error('Error loading model:', err);
+      setModels(prev => ({
+        ...prev,
+        [modelName]: { ...prev[modelName], status: 'error' }
+      }));
+      return false;
     }
-  }, [apiUrl]);
+  }, [models]);
 
-  const refreshModels = useCallback(async () => {
-    await fetchModels();
-  }, [fetchModels]);
+  const unloadModel = useCallback(async (modelName: string) => {
+    try {
+      const response = await apiService.unloadModel(modelName);
+      if (!response.error) {
+        setModels(prev => ({
+          ...prev,
+          [modelName]: { ...prev[modelName], status: 'unloaded' }
+        }));
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error unloading model:', err);
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
+    initializeModels();
+  }, [initializeModels]);
 
   return {
     models,
     loading,
     error,
+    refetch: initializeModels,
     loadModel,
-    getModelClasses,
-    refreshModels
+    unloadModel,
+    availableModels: Object.values(models).filter(m => m.isAvailable),
+    loadedModels: Object.values(models).filter(m => m.status === 'loaded')
   };
-}
+};
